@@ -5,7 +5,9 @@ import java.sql.*;
 public class Main {
     public static void main(String[] args){
 
-        DataBase.dataBase();
+        DataBaseSQL.dataBaseSQL();
+
+        DataBaseTXT.dataBaseTXT();
 
         String current_role = SignIn.role();
 
@@ -32,38 +34,42 @@ public class Main {
     }
 }
 
-class DataBase {
+class DataBaseSQL {
     public static HashMap <String, String> HM_login_check = new HashMap<>();
 
     public static HashMap <String, ArrayList <String> > HM_role_check = new HashMap<>();
 
     public static HashMap <String, String> HM_password_check = new HashMap<>();
 
-    public static HashMap <String, Boolean> HM_name_of_procedure_check = new HashMap<>();
+    public static HashMap <String, Integer> HM_name_of_procedure_check = new HashMap<>();
 
-    public static HashMap <String, Boolean> HM_login_of_clients_check = new HashMap<>();
+    public static HashMap <String, Integer> HM_login_of_clients_check = new HashMap<>();
 
     public static final String DB_URL = "jdbc:sqlite:fitness_project.db";
 
-    public static void dataBase(){
+    public static void dataBaseSQL(){
 
+        /*
         dropTable("users");
         dropTable("procedures");
         dropTable("clients");
+        */
 
         createTable();
 
-        insertDataToUsers("personal", "personal1", "pel1");
-        insertDataToUsers("director", "director1", "dir1");
-        insertDataToUsers("manager", "manager1", "mar1");
-        insertDataToUsers("client", "client1", "clt1");
+        if (firstTimeOrNot()) {
+            insertDataToUsers("personal", "personal1", "pel1");
+            insertDataToUsers("director", "director1", "dir1");
+            insertDataToUsers("manager", "manager1", "mar1");
+            insertDataToUsers("client", "client1", "clt1");
 
-        insertDataToProcedures("Массаж", 2000.00, "1 час");
-        insertDataToProcedures("Йога", 5000.00, "3 часа");
-        insertDataToProcedures("Бассейн", 4000.00, "2 часа");
+            insertDataToProcedures("Массаж", 2000.00);
+            insertDataToProcedures("Йога", 5000.00);
+            insertDataToProcedures("Бассейн", 4000.00);
 
-        insertDataToClients("client1", "Мирлан", "Кыдыев", 182, 75, 3, "14.02.2007");
-        insertDataToClients("client2", "Тагайбек", "Кубатов", 200, 150, 2, "20.10.2006");
+            insertDataToClients("client1", "Мирлан", "Кыдыев", 182, 75, 3, "14.02.2007");
+            insertDataToClients("client2", "Тагайбек", "Кубатов", 200, 150, 2, "20.10.2006");
+        }
 
         readUsersData();
         readProceduresData();
@@ -85,6 +91,135 @@ class DataBase {
 
         } catch (SQLException e) {
             System.err.println("❌ Ошибка при удалении таблицы: " + e.getMessage());
+        }
+    }
+
+    private static void createTable() {
+        String sqlUsers = """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                role TEXT NOT NULL,
+                login TEXT NOT NULL,
+                password TEXT NOT NULL
+            );
+            """;
+
+        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
+            stmt.execute(sqlUsers);
+            System.out.println("✅ Таблица создана (или уже существует).");
+        } catch (SQLException e) {
+            System.err.println("❌ Ошибка при создании таблицы: " + e.getMessage());
+        }
+
+        String sqlProcedures = """
+            CREATE TABLE IF NOT EXISTS procedures (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                cost DOUBLE NOT NULL
+            );
+            """;
+
+        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
+            stmt.execute(sqlProcedures);
+            System.out.println("✅ Таблица создана (или уже существует).");
+        } catch (SQLException e) {
+            System.err.println("❌ Ошибка при создании таблицы: " + e.getMessage());
+        }
+
+        String sqlClients = """
+            CREATE TABLE IF NOT EXISTS clients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                login TEXT NOT NULL,
+                name TEXT NOT NULL,
+                surname TEXT NOT NULL,
+                height INTEGER NOT NULL,
+                weight INTEGER NOT NULL,
+                bloodType INTEGER NOT NULL,
+                dateOfBirth TEXT NOT NULL
+           );
+            """;
+
+        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
+            stmt.execute(sqlClients);
+            System.out.println("✅ Таблица создана (или уже существует).");
+        } catch (SQLException e) {
+            System.err.println("❌ Ошибка при создании таблицы: " + e.getMessage());
+        }
+    }
+
+    private static boolean firstTimeOrNot() {
+        String sql = "SELECT 1 FROM users LIMIT 1";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            if (rs.next()) {
+                return false;
+            } else {
+                return true;
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Ошибка при работе с базой данных: " + e.getMessage());
+        }
+        return true;
+    }
+
+    public static void insertDataToUsers(String role, String login, String password) {
+        String sql = "INSERT INTO users(role, login, password) VALUES(?, ?, ?)";
+
+        if (HM_login_check.get(login) == null) {
+            try (Connection conn = connect(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, role);
+                pstmt.setString(2, login);
+                pstmt.setString(3, password);
+
+                pstmt.executeUpdate();
+
+                System.out.println("✅ Данные добавлены: " + role + " " + login);
+            } catch (SQLException e) {
+                System.err.println("❌ Ошибка при вставке данных: " + e.getMessage());
+            }
+        }
+    }
+
+    public static void insertDataToProcedures(String name, Double cost) {
+        String sql = "INSERT INTO procedures(name, cost) VALUES(?, ?)";
+
+        if (HM_name_of_procedure_check.get(name) == null) {
+            try (Connection conn = connect(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, name);
+                pstmt.setDouble(2, cost);
+
+                pstmt.executeUpdate();
+
+                System.out.println("✅ Данные добавлены: " + name + " " + cost + "0 сом");
+            } catch (SQLException e) {
+                System.err.println("❌ Ошибка при вставке данных: " + e.getMessage());
+            }
+        }
+    }
+
+    public static void insertDataToClients(String login, String name, String surname, Integer height, Integer weight, Integer bloodType, String dateOfBirth) {
+        String sql = "INSERT INTO clients(login, name, surname, height, weight, bloodType, dateOfBirth) VALUES(?, ?, ?, ?, ?, ?, ?)";
+
+        if (HM_login_of_clients_check.get(login) == null) {
+            try (Connection conn = connect(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, login);
+                pstmt.setString(2, name);
+                pstmt.setString(3, surname);
+                pstmt.setInt(4, height);
+                pstmt.setInt(5, weight);
+                pstmt.setInt(6, bloodType);
+                pstmt.setString(7, dateOfBirth);
+
+                pstmt.executeUpdate();
+
+                System.out.println("✅ Данные добавлены: " + login + " " + name);
+            } catch (SQLException e) {
+                System.err.println("❌ Ошибка при вставке данных: " + e.getMessage());
+            }
         }
     }
 
@@ -121,9 +256,10 @@ class DataBase {
 
         try (Connection conn = connect(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
+                int id = rs.getInt("id");
                 String name = rs.getString("name");
 
-                HM_name_of_procedure_check.put(name, true);
+                HM_name_of_procedure_check.put(name, id);
             }
         } catch (SQLException e) {
             System.err.println("❌ Ошибка при чтении данных: " + e.getMessage());
@@ -135,124 +271,13 @@ class DataBase {
 
         try (Connection conn = connect(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
+                int id = rs.getInt("id");
                 String login = rs.getString("login");
 
-                HM_login_of_clients_check.put(login, true);
+                HM_login_of_clients_check.put(login, id);
             }
         } catch (SQLException e) {
             System.err.println("❌ Ошибка при чтении данных: " + e.getMessage());
-        }
-    }
-
-    private static void createTable() {
-        String sqlUsers = """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                role TEXT NOT NULL,
-                login TEXT NOT NULL,
-                password TEXT NOT NULL
-            );
-            """;
-
-        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
-            stmt.execute(sqlUsers);
-            System.out.println("✅ Таблица создана (или уже существует).");
-        } catch (SQLException e) {
-            System.err.println("❌ Ошибка при создании таблицы: " + e.getMessage());
-        }
-
-        String sqlProcedures = """
-            CREATE TABLE IF NOT EXISTS procedures (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                cost DOUBLE NOT NULL,
-                duration TEXT NOT NULL
-            );
-            """;
-
-        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
-            stmt.execute(sqlProcedures);
-            System.out.println("✅ Таблица создана (или уже существует).");
-        } catch (SQLException e) {
-            System.err.println("❌ Ошибка при создании таблицы: " + e.getMessage());
-        }
-
-        String sqlClients = """
-            CREATE TABLE IF NOT EXISTS clients (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                login TEXT NOT NULL,
-                name TEXT NOT NULL,
-                surname TEXT NOT NULL,
-                height INTEGER NOT NULL,
-                weight INTEGER NOT NULL,
-                bloodType INTEGER NOT NULL,
-                dateOfBirth TEXT NOT NULL
-           );
-            """;
-
-        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
-            stmt.execute(sqlClients);
-            System.out.println("✅ Таблица создана (или уже существует).");
-        } catch (SQLException e) {
-            System.err.println("❌ Ошибка при создании таблицы: " + e.getMessage());
-        }
-    }
-
-    public static void insertDataToUsers(String role, String login, String password) {
-        String sql = "INSERT INTO users(role, login, password) VALUES(?, ?, ?)";
-
-        if (HM_login_check.get(login) == null) {
-            try (Connection conn = connect(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, role);
-                pstmt.setString(2, login);
-                pstmt.setString(3, password);
-
-                pstmt.executeUpdate();
-
-                System.out.println("✅ Данные добавлены: " + role + " " + login);
-            } catch (SQLException e) {
-                System.err.println("❌ Ошибка при вставке данных: " + e.getMessage());
-            }
-        }
-    }
-
-    public static void insertDataToProcedures(String name, Double cost, String duration) {
-        String sql = "INSERT INTO procedures(name, cost, duration) VALUES(?, ?, ?)";
-
-        if (HM_name_of_procedure_check.get(name) == null) {
-            try (Connection conn = connect(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, name);
-                pstmt.setDouble(2, cost);
-                pstmt.setString(3, duration);
-
-                pstmt.executeUpdate();
-
-                System.out.println("✅ Данные добавлены: " + name + " " + cost + "0 сом");
-            } catch (SQLException e) {
-                System.err.println("❌ Ошибка при вставке данных: " + e.getMessage());
-            }
-        }
-    }
-
-    public static void insertDataToClients(String login, String name, String surname, Integer height, Integer weight, Integer bloodType, String dateOfBirth) {
-        String sql = "INSERT INTO clients(login, name, surname, height, weight, bloodType, dateOfBirth) VALUES(?, ?, ?, ?, ?, ?, ?)";
-
-        if (HM_login_of_clients_check.get(login) == null) {
-            try (Connection conn = connect(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, login);
-                pstmt.setString(2, name);
-                pstmt.setString(3, surname);
-                pstmt.setInt(4, height);
-                pstmt.setInt(5, weight);
-                pstmt.setInt(6, bloodType);
-                pstmt.setString(7, dateOfBirth);
-
-                pstmt.executeUpdate();
-
-                System.out.println("✅ Данные добавлены: " + login + " " + name);
-            } catch (SQLException e) {
-                System.err.println("❌ Ошибка при вставке данных: " + e.getMessage());
-            }
         }
     }
 
@@ -275,6 +300,90 @@ class DataBase {
         }
 
         return HM_password_check.get(login).equals(password);
+    }
+}
+
+class DataBaseTXT {
+    public static HashMap <String, Boolean> HM_schedule_check = new HashMap<>();
+
+    public static ArrayList <String> proceduresSchedule = new ArrayList<>();
+
+    public static void dataBaseTXT() {
+
+        /* deleteFile(); */
+
+        createFile();
+
+        readFile();
+
+        writeFile("Массаж", "Понедельник", "13:00");
+    }
+
+    private static void deleteFile(){
+        File file = new File("procedureSchedule.txt");
+        if (file.delete()) {
+            System.out.println("Файл удален");
+        } else {
+            System.out.println("Файл не найден");
+        }
+    }
+
+    private static void createFile(){
+        try {
+            File file = new File("procedureSchedule.txt");
+            if (file.createNewFile()) {
+                System.out.println("Файл создан");
+            } else {
+                System.out.println("Файл уже существует");
+            }
+        } catch (IOException e) {
+            System.out.println("Ошибка при создании файла");
+        }
+    }
+
+    public static void readFile(){
+        try {
+            FileReader fileReader = new FileReader("procedureSchedule.txt");
+            BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+            String line;
+
+            while ((line = bufferedReader.readLine()) != null) {
+                proceduresSchedule.add(line);
+                HM_schedule_check.put(line, true);
+            }
+
+            bufferedReader.close();
+        } catch (IOException e) {
+            System.out.println("Ошибка при чтении файла");
+        }
+    }
+
+    public static void writeFile(String procedureName, String weekDay, String time){
+        String newProcedureSchedule = procedureName + " " + weekDay + " " + time;
+
+        if (HM_schedule_check.get(newProcedureSchedule) != null){
+            System.out.println("В это время уже стоит процедура");
+            return;
+        }
+
+        HM_schedule_check.put(newProcedureSchedule, true);
+
+        proceduresSchedule.add(newProcedureSchedule);
+
+        try {
+            FileWriter fileWriter = new FileWriter("procedureSchedule.txt");
+            BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+
+            for (String x : proceduresSchedule){
+                bufferedWriter.write(x);
+                bufferedWriter.newLine();
+            }
+
+            bufferedWriter.close();
+        } catch (IOException e) {
+            System.out.println("Ошибка при записи в файл");
+        }
     }
 }
 
@@ -320,7 +429,7 @@ class SignIn {
 
         System.out.println();
 
-        if (!DataBase.isRight(role, login, password)) {
+        if (!DataBaseSQL.isRight(role, login, password)) {
             System.out.println("Логин или пароль введены неправильно.");
 
             login = "exit";
@@ -330,7 +439,7 @@ class SignIn {
     }
 }
 
-class Personal extends DataBase{
+class Personal extends DataBaseSQL{
     public static void personal(){
         Scanner scan = new Scanner(System.in);
 
@@ -390,6 +499,51 @@ class Personal extends DataBase{
     }
 
     public static void listOfProcedures() {
+
+    }
+
+    public static void searchClient(){
+        Scanner scan = new Scanner(System.in);
+
+        System.out.print("Введите логин посетителя которого хотите найти: ");
+        String login = scan.nextLine();
+
+        String query = "SELECT * FROM clients WHERE login = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, login);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    int id = rs.getInt("id");
+                    String name = rs.getString("name");
+                    String surname = rs.getString("surname");
+                    Integer height = rs.getInt("height");
+                    Integer weight = rs.getInt("weight");
+                    Integer bloodType = rs.getInt("bloodType");
+                    String dateOfBirth = rs.getString("dateOfBirth");
+
+                    System.out.println("Пользователь найден:");
+                    System.out.println("ID: " + id);;
+                    System.out.println("Имя: " + name);
+                    System.out.println("Фамилия: " + surname);
+                    System.out.println("Рост: " + height + " см");
+                    System.out.println("Вес: " + weight + " кг");
+                    System.out.println("Группа крови: " + bloodType);
+                    System.out.println("Дата рождения: " + dateOfBirth);
+
+                } else {
+                    System.out.println("Пользователь с логином '" + login + "' не найден.");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Ошибка при поиске посетителя: " + e.getMessage());
+        }
+    }
+
+    public static void allProcedures(){
         String sql = "SELECT * FROM procedures";
 
         try (Connection conn = connect(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
@@ -397,22 +551,14 @@ class Personal extends DataBase{
 
             while (rs.next()) {
                 System.out.printf("ID: %d | Название: %s | Цена: %d.00 сом | Длительность: %s%n",
-                    rs.getInt("id"),
-                    rs.getString("name"),
-                    rs.getInt("price"),
-                    rs.getString("time"));
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getInt("price"),
+                        rs.getString("time"));
             }
         } catch (SQLException e) {
             System.err.println("❌ Ошибка при чтении данных: " + e.getMessage());
         }
-    }
-
-    public static void searchClient(){
-
-    }
-
-    public static void allProcedures(){
-
     }
 
     public static void procedureSchedule(){
@@ -428,7 +574,7 @@ class Personal extends DataBase{
     }
 }
 
-class Director extends DataBase{
+class Director extends DataBaseSQL{
     public static void director(String login){
         Scanner scan = new Scanner(System.in);
 
@@ -436,7 +582,7 @@ class Director extends DataBase{
     }
 }
 
-class Manager extends DataBase{
+class Manager extends DataBaseSQL{
     public static void manager() {
         Scanner scan = new Scanner(System.in);
 
@@ -481,7 +627,7 @@ class Manager extends DataBase{
                     changePriceToProcedure();
                     break;
                 case "5":
-                    changeTimeOrNameToProcedure();
+                    changeNameToProcedure();
                     break;
                 case "6":
                     maxCountOfVisit();
@@ -579,8 +725,13 @@ class Manager extends DataBase{
         System.out.print("Введите название процедуры для изменения её цены: ");
         String name = scan.nextLine();
 
+        if (HM_name_of_procedure_check.get(name) == null){
+            System.out.println("\nТакой процедуры не существует.");
+            return;
+        }
+
         System.out.print("\nВведите новую цену для этой процедуры: ");
-        double cost = scan.nextDouble();
+        double newCost = scan.nextDouble();
 
         String url = "jdbc:sqlite:fitness_project.db";
         String sql = "UPDATE procedures SET cost = ? WHERE name = ?";
@@ -588,16 +739,40 @@ class Manager extends DataBase{
         try (Connection conn = DriverManager.getConnection(url);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setDouble(1, cost);
+            pstmt.setDouble(1, newCost);
             pstmt.setString(2, name);
 
         } catch (SQLException e) {
-            System.out.println("Ошибка при обновлении стоимости: " + e.getMessage());
+            System.out.println("\nОшибка при обновлении стоимости: " + e.getMessage());
         }
     }
 
-    public static void changeTimeOrNameToProcedure(){
+    public static void changeNameToProcedure(){
+        Scanner scan = new Scanner(System.in);
 
+        System.out.print("Введите название процедуры для изменения её названия: ");
+        String name = scan.nextLine();
+
+        if (HM_name_of_procedure_check.get(name) == null){
+            System.out.println("\nТакой процедуры не существует.");
+            return;
+        }
+
+        System.out.print("\nВведите новое название для процедуры: ");
+        String newName = scan.nextLine();
+
+        String url = "jdbc:sqlite:fitness_project.db";
+        String sql = "UPDATE procedures SET name = ? WHERE id = ?";
+
+        try (Connection conn = DriverManager.getConnection(url);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, newName);
+            pstmt.setInt(2, HM_name_of_procedure_check.get(name));
+
+        } catch (SQLException e) {
+            System.out.println("\nОшибка при обновлении названия: " + e.getMessage());
+        }
     }
 
     public static void maxCountOfVisit(){
@@ -609,7 +784,7 @@ class Manager extends DataBase{
     }
 }
 
-class Client extends DataBase{
+class Client extends DataBaseSQL{
     public static void client(String login){
         Scanner scan = new Scanner(System.in);
 

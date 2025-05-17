@@ -106,7 +106,6 @@ class DataBaseSQL {
 
         try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
             stmt.execute(sqlUsers);
-            System.out.println("✅ Таблица создана (или уже существует).");
         } catch (SQLException e) {
             System.err.println("❌ Ошибка при создании таблицы: " + e.getMessage());
         }
@@ -121,7 +120,6 @@ class DataBaseSQL {
 
         try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
             stmt.execute(sqlProcedures);
-            System.out.println("✅ Таблица создана (или уже существует).");
         } catch (SQLException e) {
             System.err.println("❌ Ошибка при создании таблицы: " + e.getMessage());
         }
@@ -141,7 +139,6 @@ class DataBaseSQL {
 
         try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
             stmt.execute(sqlClients);
-            System.out.println("✅ Таблица создана (или уже существует).");
         } catch (SQLException e) {
             System.err.println("❌ Ошибка при создании таблицы: " + e.getMessage());
         }
@@ -308,7 +305,7 @@ class DataBaseTXT {
 
     public static ArrayList <String> proceduresSchedule = new ArrayList<>();
 
-    public static void dataBaseTXT() {
+    public static void dataBaseTXT(){
 
         /* deleteFile(); */
 
@@ -317,6 +314,16 @@ class DataBaseTXT {
         readFile();
 
         writeFile("Массаж", "Понедельник", "13:00");
+
+        writeFile("Йога", "Вторник", "15:00");
+
+        writeFile("Бассейн", "Среда", "12:00");
+
+        writeFile("Массаж", "Среда", "10:00");
+
+        writeFile("Йога", "Четверг", "14:00");
+
+        writeFile("Бассейн", "Пятница", "15:00");
     }
 
     private static void deleteFile(){
@@ -828,7 +835,7 @@ class Client extends DataBaseSQL{
                     scheduleOfTraining();
                     break;
                 case "5":
-                    myInfo();
+                    myInfo(login);
                     break;
                 case "0":
                     running = false;
@@ -856,8 +863,39 @@ class Client extends DataBaseSQL{
 
     }
 
-    public static void myInfo(){
+    public static void myInfo(String login){
+        String query = "SELECT * FROM clients WHERE login = ?";
 
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, login);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    int id = rs.getInt("id");
+                    String name = rs.getString("name");
+                    String surname = rs.getString("surname");
+                    Integer height = rs.getInt("height");
+                    Integer weight = rs.getInt("weight");
+                    Integer bloodType = rs.getInt("bloodType");
+                    String dateOfBirth = rs.getString("dateOfBirth");
+
+                    System.out.println("Пользователь найден:");
+                    System.out.println("ID: " + id);;
+                    System.out.println("Имя: " + name);
+                    System.out.println("Фамилия: " + surname);
+                    System.out.println("Рост: " + height + " см");
+                    System.out.println("Вес: " + weight + " кг");
+                    System.out.println("Группа крови: " + bloodType);
+                    System.out.println("Дата рождения: " + dateOfBirth);
+
+                } else {
+                    System.out.println("Пользователь с логином '" + login + "' не найден.");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Ошибка при поиске посетителя: " + e.getMessage());
+        }
     }
-
 }
